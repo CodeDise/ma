@@ -16,15 +16,15 @@ class Config:
     BASE_URL: str = "http://localhost:8000"
 
     # Telegram Bot & Mini App
-    TELEGRAM_BOT_TOKEN: str = "8056294132:AAHfR3E9wExample_MioAdsTokenSecretKey"
+    TELEGRAM_BOT_TOKEN: str = "9288636276:AAHppMVE_ghxA-jDw-6ElhMhfcwuAaSDZdQ"
     TELEGRAM_BOT_NAME: str = "mioads bot"
     TELEGRAM_BOT_USERNAME: str = "mioadsbot"
     TELEGRAM_CHANNEL_NAME: str = "Mioads"
     TELEGRAM_CHANNEL_USERNAME: str = "@mioads"
-    MINI_APP_SHORT_NAME: str = "app"
+    MINI_APP_SHORT_NAME: str = "MA"
 
     # Administrative 'Lock Channel' (Private channel for security mirrors, logs, SLA alerts, invoices)
-    LOCK_CHANNEL_ID: str = "-1002345678901"
+    LOCK_CHANNEL_ID: str = "-1004466373562"
     LOCK_CHANNEL_TITLE: str = "Mio Ads [Administrative Lock Ledger]"
 
     # MongoDB Dynamic Configuration
@@ -35,7 +35,7 @@ class Config:
     DB_NAME: str = "mioads_db"
 
     # Platform Financial & Operational Thresholds
-    PLATFORM_FEE_PERCENT: float = 15.0         # Dynamic platform fee deduction (%)
+    PLATFORM_FEE_PERCENT: float = 30.0         # Dynamic platform fee deduction (%)
     USDT_TO_INR_RATE: float = 80.0             # Default $1 = 80 INR (adjustable by Admin)
     MIN_DEPOSIT_INR: float = 500.0             # Minimum 500 INR via UPI
     MIN_DEPOSIT_USDT: float = 10.0             # Minimum $10 USDT
@@ -44,7 +44,7 @@ class Config:
     SUPPORT_SLA_HOURS: int = 24                # Strict 24-hour response SLA
 
     # Advertising & Traffic Logic
-    DEFAULT_CPC_RATE_USDT: float = 0.02        # CPC default per click
+    DEFAULT_CPC_RATE_USDT: float = 0.01        # CPC default per click
     DEFAULT_CPM_RATE_USDT: float = 2.50        # CPM per 1000 impressions
     AFFILIATE_CLICK_RATE_USDT: float = 0.005   # Configurable affiliate per-click rate ($0.005)
     DWELL_TIME_MIN_SECONDS: int = 60           # Dwell time timer minimum (1 minute)
