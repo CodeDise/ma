@@ -12,7 +12,7 @@ class Config:
     APP_NAME: str = "Mio Ads"
     APP_VERSION: str = "2.0.0"
     SERVER_HOST: str = "0.0.0.0"
-    SERVER_PORT: int = int(os.environ.get("PORT", 8000))
+    SERVER_PORT: int = int(os.environ.get("PORT", 8080))
     BASE_URL: str = "http://localhost:8000"
 
     # Telegram Bot & Mini App
