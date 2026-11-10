@@ -96,6 +96,10 @@ const MioApp = {
   },
 
   switchView(viewName) {
+    if (viewName === "admin" && (this.state.user.role !== "admin" || !this.adminSession())) {
+      this.showAdminLogin();
+      viewName = "home";
+    }
     this.state.activeView = viewName;
 
     // Toggle view containers
@@ -499,29 +503,90 @@ const MioApp = {
     }
   },
 
+
+  // ---------- Admin session & login ----------
+  adminSession() { try { return sessionStorage.getItem("mio_admin_session") || ""; } catch (e) { return ""; } },
+
+  async adminFetch(url, opts = {}) {
+    opts.headers = Object.assign({}, opts.headers, { "X-Admin-Session": this.adminSession() });
+    const res = await fetch(url, opts);
+    if (res.status === 401 || res.status === 403) {
+      try { sessionStorage.removeItem("mio_admin_session"); } catch (e) {}
+      if (res.status === 403) { this.state.user.role = "user"; this.updateProfileUI(); this.switchView("home"); }
+      else this.showAdminLogin();
+    }
+    return res;
+  },
+
+  showAdminLogin() {
+    const idEl = document.getElementById("admin-login-id");
+    if (idEl && !idEl.value) idEl.value = this.state.user.telegram_id;
+    document.getElementById("admin-login-error").innerText = "";
+    this.openModal("modal-admin-login");
+  },
+
+  async submitAdminLogin() {
+    const tid = parseInt(document.getElementById("admin-login-id").value);
+    const token = document.getElementById("admin-login-token").value;
+    const errEl = document.getElementById("admin-login-error");
+    try {
+      const res = await fetch("/api/v1/admin/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: tid, token: token })
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.innerText = data.detail || "Login failed"; return; }
+      try { sessionStorage.setItem("mio_admin_session", data.session_id); } catch (e) {}
+      document.getElementById("admin-login-token").value = "";
+      this.closeModal("modal-admin-login");
+      this.state.user.telegram_id = tid;
+      await this.fetchUserProfile();
+      this.switchView("admin");
+      this.showToast("Admin login successful");
+    } catch (e) { errEl.innerText = "Network error"; }
+  },
+
+  async renderAdminList() {
+    const box = document.getElementById("admin-admins-list");
+    if (!box) return;
+    const res = await this.adminFetch("/api/v1/admin/admins");
+    if (!res.ok) return;
+    const admins = await res.json();
+    box.innerHTML = admins.map(a => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:0.8rem;">
+        <div><b>${a.first_name || a.username || "User"}</b><div style="color:var(--text-muted);font-size:0.72rem;">ID: ${a.telegram_id}</div></div>
+        ${a.telegram_id === this.state.user.telegram_id ? '<span class="brand-tag">YOU</span>' :
+          `<button class="btn-secondary" style="padding:4px 10px;font-size:0.75rem;color:#EF4444;" onclick="AdminActions.removeAdmin(${a.telegram_id})">Remove</button>`}
+      </div>`).join("");
+  },
+
   async renderAdminPanel() {
     if (this.state.user.role !== "admin") return;
 
-    // Fetch dynamic Mongo DB pool status
+    // MongoDB URL list with live status
     try {
-      const res = await fetch("/api/v1/admin/database/status");
+      const res = await this.adminFetch("/api/v1/admin/database/status");
       if (res.ok) {
-        const dbStatus = await res.json();
-        const dbContainer = document.getElementById("admin-db-status-container");
-        if (dbContainer) {
-          dbContainer.innerHTML = `
-            <div style="font-size:0.85rem;line-height:1.6;">
-              <div>Active Connection: <code style="color:var(--accent-cyan);word-break:break-all;">${dbStatus.active_uri}</code></div>
-              <div>Mode: <b>${dbStatus.is_mock ? '⚡ Mock Mongo Adapter (Ready)' : '🟢 Live Enterprise MongoDB'}</b></div>
-              <div>Database Name: <b>${dbStatus.db_name}</b></div>
-            </div>
-          `;
+        const st = await res.json();
+        const box = document.getElementById("admin-db-status-container");
+        if (box) {
+          box.innerHTML = (st.is_mock ? `<div style="font-size:0.8rem;color:#F59E0B;margin-bottom:8px;">⚠️ No live MongoDB connected. Temporary memory DB in use.</div>` : "") +
+            st.urls.map(u => `
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-light);">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.78rem;word-break:break-all;">${u.uri}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">
+                  ${u.connected ? '<span style="color:#10B981;">● Connected</span>' : '<span style="color:#EF4444;">● Failed</span>'}
+                  ${u.latency_ms ? ' • ' + u.latency_ms + ' ms' : ''}${u.active ? ' • <b style="color:var(--accent-cyan);">ACTIVE</b>' : ''}
+                </div>
+              </div>
+              <button class="btn-secondary" style="padding:4px 10px;font-size:0.75rem;color:#EF4444;" onclick="AdminActions.removeDb('${u.db_id}')">Remove</button>
+            </div>`).join("");
         }
       }
-    } catch (e) {
-      console.warn("Admin DB status failed:", e);
-    }
+    } catch (e) { console.warn("Admin DB status failed:", e); }
 
+    this.renderAdminList();
     // Fetch moderation queues
     this.fetchAdminPendingChannels();
     this.fetchAdminPendingWithdrawals();
@@ -533,7 +598,7 @@ const MioApp = {
     if (!list) return;
 
     try {
-      const res = await fetch("/api/v1/admin/channels/pending");
+      const res = await this.adminFetch("/api/v1/admin/channels/pending");
       if (res.ok) {
         const pending = await res.json();
         if (!pending.length) {
@@ -563,7 +628,7 @@ const MioApp = {
 
   async moderateChannel(channelId, action) {
     try {
-      const res = await fetch("/api/v1/admin/channels/moderate", {
+      const res = await this.adminFetch("/api/v1/admin/channels/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -587,7 +652,7 @@ const MioApp = {
     if (!list) return;
 
     try {
-      const res = await fetch("/api/v1/admin/withdrawals/pending");
+      const res = await this.adminFetch("/api/v1/admin/withdrawals/pending");
       if (res.ok) {
         const withdrawals = await res.json();
         if (!withdrawals.length) {
@@ -618,7 +683,7 @@ const MioApp = {
 
   async moderateWithdrawal(txId, action) {
     try {
-      const res = await fetch("/api/v1/admin/withdrawals/moderate", {
+      const res = await this.adminFetch("/api/v1/admin/withdrawals/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -641,7 +706,7 @@ const MioApp = {
     if (!list) return;
 
     try {
-      const res = await fetch("/api/v1/admin/lock-ledger/logs");
+      const res = await this.adminFetch("/api/v1/admin/lock-ledger/logs");
       if (res.ok) {
         const logs = await res.json();
         list.innerHTML = logs.map(l => `
@@ -677,10 +742,10 @@ const MioApp = {
     } else if (cmd.startsWith("/help") || cmd.startsWith("/support")) {
       this.switchView("support");
     } else if (cmd.startsWith("/admin")) {
-      if (this.state.user.role === "admin") {
+      if (this.state.user.role === "admin" && this.adminSession()) {
         this.switchView("admin");
       } else {
-        this.showToast("Access Denied: Administrative role required.");
+        this.showAdminLogin();
       }
     } else if (cmd.startsWith("/deposit")) {
       this.openModal("modal-deposit");
@@ -729,24 +794,6 @@ const MioApp = {
       });
     }
 
-    // Role switcher dropdown (Demo & Testing ease)
-    const roleSelect = document.getElementById("demo-role-switcher");
-    if (roleSelect) {
-      roleSelect.addEventListener("change", (e) => {
-        const selectedRole = e.target.value;
-        this.state.user.role = selectedRole;
-        if (selectedRole === "admin") {
-          this.state.user.telegram_id = 123456789;
-          this.state.user.first_name = "Mio Ads Admin";
-        } else {
-          this.state.user.telegram_id = 100200300;
-          this.state.user.first_name = "Arjun Sharma";
-        }
-        this.updateProfileUI();
-        this.renderAdminPanel();
-        this.showToast(`Switched persona to: ${selectedRole.toUpperCase()}`);
-      });
-    }
   }
 };
 
