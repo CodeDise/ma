@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mio Ads | Telegram Mini App Ecosystem</title>
+  <!-- Telegram WebApp Script -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Brand Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- Dynamic Watermark Logo: Centered 1/1 MA Monogram adapts to Light/Dark Themes -->
+  <div class="dynamic-watermark" aria-hidden="true"></div>
+
+  <!-- Mandatory Opening View / Splash Screen -->
+  <div id="opening-view">
+    <img src="/static/images/logo.png" alt="Mio Ads MA Logo" class="splash-logo" />
+    <h1 class="splash-title">MIO ADS</h1>
+    <p class="splash-subtitle">Decentralized Telegram Ads & Monetization Ecosystem with Administrative Lock Ledger</p>
+    <button class="splash-btn" onclick="MioApp.dismissOpeningView()">Enter Ecosystem 🚀</button>
+    <div class="splash-meta">
+      <span>🔒 Secured by 24h SLA & Lock Ledger</span>
+    </div>
+  </div>
+
+  <!-- Main Telegram Mini App Wrapper -->
+  <div id="app-container">
+    
+    <!-- Top Brand Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <img src="/static/images/logo.png" alt="Logo" class="brand-logo-small" />
+        <div>
+          <span class="brand-title">Mio Ads</span>
+          <span id="user-role-badge" class="brand-tag">USER</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <button class="theme-toggle-btn" onclick="MioApp.toggleTheme()">
+          <span id="theme-toggle-text">🌙 Dark</span>
+        </button>
+        <!-- Demo Persona Switcher for Quick Evaluation -->
+        <select id="demo-role-switcher" style="background:rgba(255,255,255,0.1);color:#FFF;border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:4px 6px;font-size:0.75rem;">
+          <option value="user" style="color:#000;">User Mode</option>
+          <option value="admin" style="color:#000;">Admin Mode</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Global Command Input Bar (Spec: All User & Admin commands parsed via unified Mini App interface) -->
+    <div class="command-bar">
+      <input type="text" id="global-command-input" class="command-input" placeholder="Type /start, /wallet, /channels, /stats, /admin, /help..." />
+      <button class="command-btn" onclick="MioApp.executeCommand(document.getElementById('global-command-input').value)">Send</button>
+    </div>
+
+    <!-- Scrollable Main View Content -->
+    <main class="view-container">
+
+      <!-- ================= 1. HOME VIEW ================= -->
+      <section id="view-home" class="view-section active">
+        <!-- Multi-Currency Wallet Card -->
+        <div class="wallet-card">
+          <div class="wallet-label">Multi-Currency Wallet Balance</div>
+          <div class="wallet-balance-row">
+            <span class="wallet-amount-usdt val-usdt-balance">$0.00 USDT</span>
+            <span class="wallet-amount-inr val-inr-balance">₹0.00 INR</span>
+          </div>
+          <div class="wallet-rate-badge val-exchange-rate">1 USDT = ₹80.00 INR</div>
+          <div class="wallet-actions">
+            <button class="btn-primary" onclick="MioApp.openModal('modal-deposit')">💳 Deposit (UPI / USDT)</button>
+            <button class="btn-secondary" onclick="MioApp.openModal('modal-withdraw')">💸 Withdraw (48h SLA)</button>
+          </div>
+        </div>
+
+        <!-- Quick Action Cards Grid -->
+        <div class="quick-grid">
+          <div class="action-card" onclick="MioApp.switchView('channels')">
+            <span style="font-size:1.4rem;">📢</span>
+            <div class="action-card-title">Channel Hub</div>
+            <div class="action-card-desc">Monetize or promote Telegram channels</div>
+          </div>
+          <div class="action-card" onclick="MioApp.openModal('modal-campaign-create')">
+            <span style="font-size:1.4rem;">🎯</span>
+            <div class="action-card-title">New Campaign</div>
+            <div class="action-card-desc">Launch verified CPC/CPM campaigns</div>
+          </div>
+          <div class="action-card" onclick="MioApp.switchView('stats')">
+            <span style="font-size:1.4rem;">📊</span>
+            <div class="action-card-title">Publisher Stats</div>
+            <div class="action-card-desc">Daily, weekly, and monthly metrics</div>
+          </div>
+          <div class="action-card" onclick="MioApp.switchView('support')">
+            <span style="font-size:1.4rem;">🎫</span>
+            <div class="action-card-title">24h SLA Support</div>
+            <div class="action-card-desc">File ticket with media & lock ledger</div>
+          </div>
+        </div>
+
+        <!-- Active Ad Campaigns with Dwell-Time Countdown -->
+        <div class="section-header">
+          <h2 class="section-title">Live Ad Network Stream</h2>
+          <span class="section-link" onclick="MioApp.openModal('modal-campaign-create')">+ Create Ad</span>
+        </div>
+        <div id="campaigns-list">
+          <!-- Populated dynamically with dwell-timer box -->
+        </div>
+
+        <!-- Global Channel Ranking Leaderboard (Preserves privacy: Channel Name and Logo only) -->
+        <div class="section-header" style="margin-top:20px;">
+          <h2 class="section-title">Global Channel Leaderboard</h2>
+          <span style="font-size:0.75rem;color:var(--text-muted);">Name & Logo Only</span>
+        </div>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Channel</th>
+                <th>Category</th>
+                <th>Total Reach</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= 2. CHANNELS VIEW ================= -->
+      <section id="view-channels" class="view-section">
+        <div class="section-header">
+          <h2 class="section-title">Channel Management</h2>
+          <button class="btn-primary" style="padding:6px 12px;font-size:0.8rem;" onclick="MioApp.openModal('modal-channel-link')">+ Link Channel</button>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:12px;padding:12px;margin-bottom:14px;font-size:0.8rem;color:var(--text-secondary);">
+          ℹ️ <b>Admin Moderation Policy:</b> Every linked channel requires manual Admin approval before ad campaigns or monetization payouts can run.
+        </div>
+
+        <h3 style="font-size:0.95rem;margin-bottom:10px;font-weight:700;">Monetization Channels (Earn Revenue)</h3>
+        <div id="monetization-channels-list"></div>
+
+        <h3 style="font-size:0.95rem;margin:16px 0 10px;font-weight:700;">Promotion Channels (Promote Your Channel)</h3>
+        <div id="promotion-channels-list"></div>
+      </section>
+
+      <!-- ================= 3. WALLET VIEW ================= -->
+      <section id="view-wallet" class="view-section">
+        <div class="wallet-card">
+          <div class="wallet-label">Mio Ads Multi-Currency Balance</div>
+          <div class="wallet-balance-row">
+            <span class="wallet-amount-usdt val-usdt-balance">$0.00 USDT</span>
+            <span class="wallet-amount-inr val-inr-balance">₹0.00 INR</span>
+          </div>
+          <div class="wallet-rate-badge val-exchange-rate">1 USDT = ₹80.00 INR</div>
+          <div class="wallet-actions">
+            <button class="btn-primary" onclick="MioApp.openModal('modal-deposit')">💳 Deposit Funds</button>
+            <button class="btn-secondary" onclick="MioApp.openModal('modal-withdraw')">💸 Request Payout</button>
+          </div>
+        </div>
+
+        <div class="sla-badge-48h">
+          <span>⏳ <b>Strict 48-Hour Review SLA:</b> All withdrawals are subject to Admin audit before release.</span>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:12px;padding:14px;margin-bottom:18px;">
+          <h4 style="font-size:0.85rem;font-weight:700;margin-bottom:8px;">Deposit & Withdrawal Thresholds:</h4>
+          <ul style="font-size:0.8rem;color:var(--text-secondary);padding-left:18px;line-height:1.5;">
+            <li>Minimum Deposit (UPI): <b>₹500 INR</b></li>
+            <li>Minimum Deposit (USDT): <b>$10.00 USDT</b></li>
+            <li>Minimum Withdrawal: <b>$5.00 USDT</b> (or equivalent INR)</li>
+            <li>Platform Fee Deduction: <b class="val-platform-fee">15%</b></li>
+          </ul>
+        </div>
+
+        <div class="section-header">
+          <h3 class="section-title">Automated Invoices & Lock Ledger</h3>
+          <span style="font-size:0.75rem;color:var(--accent-cyan);">PDF Backed</span>
+        </div>
+        <div id="invoices-history-list" class="campaign-card" style="padding:4px;">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ================= 4. ANALYTICS VIEW ================= -->
+      <section id="view-stats" class="view-section">
+        <div class="section-header">
+          <h2 class="section-title">Publisher Click Analytics</h2>
+          <span style="font-size:0.75rem;color:var(--text-muted);">Real-Time Metrics</span>
+        </div>
+        
+        <div id="publisher-analytics-cards">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ================= 5. SUPPORT VIEW ================= -->
+      <section id="view-support" class="view-section">
+        <div class="section-header">
+          <h2 class="section-title">Support Ticketing System</h2>
+          <button class="btn-primary" style="padding:6px 12px;font-size:0.8rem;" onclick="MioApp.openModal('modal-ticket-create')">+ New Ticket</button>
+        </div>
+
+        <div class="sla-badge-24h" style="width:100%;margin-bottom:16px;">
+          <span>⏱ <b>Strict 24-Hour Response SLA:</b> All inquiries are mirrored to the private administrative Lock Channel.</span>
+        </div>
+
+        <div id="tickets-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ================= 6. ADMIN VIEW ================= -->
+      <section id="view-admin" class="view-section">
+        <div class="section-header">
+          <h2 class="section-title">Admin Moderation & Master Control</h2>
+          <span class="brand-tag">SHIELD ACTIVE</span>
+        </div>
+
+        <!-- Dynamic MongoDB Pool Control -->
+        <div class="campaign-card">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:8px;">Dynamic MongoDB Connection Pool</h4>
+          <div id="admin-db-status-container" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="MioApp.openModal('modal-switch-db')">Switch Database URI</button>
+            <button class="btn-secondary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="MioApp.openModal('modal-test-db')">Test Mongo URI</button>
+          </div>
+        </div>
+
+        <!-- Operational Thresholds & Exchange Rate Control -->
+        <div class="campaign-card">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:10px;">Platform Operational Parameters</h4>
+          <div class="form-group">
+            <label class="form-label">Platform Fee Deduction (%)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="input-admin-fee" class="form-input" value="15.0" step="0.5" />
+              <button class="btn-primary" style="padding:0 14px;" onclick="AdminActions.updateFee()">Save</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">USDT to INR Dynamic Exchange Rate ($1 = ? INR)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="input-admin-rate" class="form-input" value="80.0" step="0.1" />
+              <button class="btn-primary" style="padding:0 14px;" onclick="AdminActions.updateRate()">Save</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Affiliate Per-Click Rate ($)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="input-admin-affiliate-rate" class="form-input" value="0.005" step="0.001" />
+              <button class="btn-primary" style="padding:0 14px;" onclick="AdminActions.updateAffiliateRate()">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Broadcast Tool -->
+        <div class="campaign-card">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:8px;">Global Telegram Broadcast</h4>
+          <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Send instantaneous announcement across all registered Telegram channels and users.</p>
+          <div class="form-group">
+            <input type="text" id="broadcast-title" class="form-input" placeholder="Broadcast Headline..." />
+          </div>
+          <div class="form-group">
+            <textarea id="broadcast-message" class="form-textarea" placeholder="Message content to broadcast..."></textarea>
+          </div>
+          <button class="btn-primary" style="width:100%;" onclick="AdminActions.sendBroadcast()">🚀 Trigger Global Broadcast</button>
+        </div>
+
+        <!-- Moderation Queues -->
+        <h3 style="font-size:0.95rem;margin:16px 0 10px;font-weight:700;">Pending Channels Moderation Queue</h3>
+        <div id="admin-pending-channels-list"></div>
+
+        <h3 style="font-size:0.95rem;margin:16px 0 10px;font-weight:700;">Withdrawals Under 48h SLA Review</h3>
+        <div id="admin-pending-withdrawals-list"></div>
+
+        <h3 style="font-size:0.95rem;margin:16px 0 10px;font-weight:700;">Administrative Lock Ledger Stream</h3>
+        <div id="admin-lock-ledger-list" class="campaign-card" style="padding:6px 12px;max-height:220px;overflow-y:auto;"></div>
+      </section>
+
+      <!-- ================= 7. SETTINGS VIEW ================= -->
+      <section id="view-settings" class="view-section">
+        <div class="section-header">
+          <h2 class="section-title">Profile & Localization Settings</h2>
+          <span class="wallet-rate-badge val-telegram-id">TG: 100200300</span>
+        </div>
+
+        <!-- Multi-Language Grid (Spec: Selected in Dark Theme, Inactive in Light Theme) -->
+        <div style="margin-bottom:20px;">
+          <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:4px;">Multi-Language Localization</h3>
+          <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">
+            Selected language displays in Dark Theme; inactive remain Light Theme. Covers major Indian regional and global standards.
+          </p>
+          <div id="language-cards-grid" class="languages-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Referral & Affiliate Tracking -->
+        <div class="campaign-card">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:6px;">Automated Referral & Affiliate Tracking</h4>
+          <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Earn per-click commissions automatically tracked per URL.</p>
+          <div class="form-group">
+            <label class="form-label">Your Unique Referral Tracking URL</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="referral-url-input" class="form-input" readonly value="https://mioads.net/r/ARJUN77" />
+              <button class="btn-primary" style="padding:0 12px;" onclick="navigator.clipboard.writeText(document.getElementById('referral-url-input').value);MioApp.showToast('Referral link copied!');">Copy</button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-top:10px;">
+            <span>Total Tracked Clicks: <b class="val-referral-clicks" style="color:var(--accent-cyan);">0</b></span>
+            <span>Current Per-Click Rate: <b class="val-affiliate-rate">$0.005</b></span>
+          </div>
+          <button class="btn-secondary" style="width:100%;margin-top:12px;font-size:0.85rem;" onclick="MioApp.openModal('modal-affiliate-apply')">
+            💼 Apply for High-Volume Affiliate Tier
+          </button>
+        </div>
+
+        <!-- API Access for Large-Scale Advertisers -->
+        <div class="campaign-card" style="margin-top:16px;">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:6px;">Advertiser API Access</h4>
+          <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:10px;">Programmatic ad creation, impression verification, and real-time stats.</p>
+          <div class="form-group">
+            <label class="form-label">Your Live Secret API Key</label>
+            <input type="text" class="form-input" readonly value="mio_usr_key_100200300_secret_live" />
+          </div>
+          <button class="btn-secondary" style="width:100%;font-size:0.8rem;" onclick="MioApp.showToast('New API Key Generated!')">🔄 Regenerate Secret Key</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Persistent PNG Bottom Navigation Bar -->
+    <nav class="bottom-nav-bar" aria-label="Bottom Navigation">
+      <button class="nav-item active" data-view="home" onclick="MioApp.switchView('home')">
+        <img src="/static/images/icons/home_active.png" alt="Home" class="nav-icon-png" />
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" data-view="channels" onclick="MioApp.switchView('channels')">
+        <img src="/static/images/icons/channels.png" alt="Channels" class="nav-icon-png" />
+        <span class="nav-label">Channels</span>
+      </button>
+      <button class="nav-item" data-view="wallet" onclick="MioApp.switchView('wallet')">
+        <img src="/static/images/icons/wallet.png" alt="Wallet" class="nav-icon-png" />
+        <span class="nav-label">Wallet</span>
+      </button>
+      <button class="nav-item" data-view="stats" onclick="MioApp.switchView('stats')">
+        <img src="/static/images/icons/stats.png" alt="Stats" class="nav-icon-png" />
+        <span class="nav-label">Stats</span>
+      </button>
+      <button class="nav-item" data-view="support" onclick="MioApp.switchView('support')">
+        <img src="/static/images/icons/support.png" alt="Support" class="nav-icon-png" />
+        <span class="nav-label">Support</span>
+      </button>
+      <button class="nav-item" data-view="admin" onclick="MioApp.switchView('admin')">
+        <img src="/static/images/icons/admin.png" alt="Admin" class="nav-icon-png" />
+        <span class="nav-label">Admin</span>
+      </button>
+      <button class="nav-item" data-view="settings" onclick="MioApp.switchView('settings')">
+        <img src="/static/images/icons/settings.png" alt="Settings" class="nav-icon-png" />
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal: Deposit (Min ₹500 UPI / $10 USDT) -->
+  <div id="modal-deposit" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Deposit Funds</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-deposit')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Currency</label>
+        <select id="deposit-currency" class="form-select" onchange="Forms.updateDepositMin()">
+          <option value="INR">UPI (Indian Rupee - ₹)</option>
+          <option value="USDT">USDT (Tether - TRC20/BEP20)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="deposit-amount-label">Deposit Amount (Min ₹500 INR)</label>
+        <input type="number" id="deposit-amount" class="form-input" placeholder="e.g. 500" value="500" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">UTR Reference / TXID</label>
+        <input type="text" id="deposit-utr" class="form-input" placeholder="Enter UPI UTR or Crypto TX Hash..." />
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:14px;">
+        📄 An official PDF Invoice will be generated automatically and registered in the Administrative Lock Channel.
+      </p>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitDeposit()">Confirm Deposit & Generate Invoice</button>
+    </div>
+  </div>
+
+  <!-- Modal: Withdrawal (Min $5 USDT, 48h SLA) -->
+  <div id="modal-withdraw" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Request Payout</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-withdraw')">×</button>
+      </div>
+      <div class="sla-badge-48h" style="width:100%;margin-bottom:12px;">
+        <span>⏳ <b>48-Hour Review SLA:</b> Subject to strict Admin audit.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Withdrawal Amount (Min $5 USDT)</label>
+        <input type="number" id="withdraw-amount" class="form-input" placeholder="5.00" value="10.00" min="5" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destination Address (USDT TRC20 / TON / UPI ID)</label>
+        <input type="text" id="withdraw-address" class="form-input" placeholder="T..." />
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitWithdrawal()">Submit for 48h Audit</button>
+    </div>
+  </div>
+
+  <!-- Modal: Link Channel (Promotion or Monetization) -->
+  <div id="modal-channel-link" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Link Telegram Channel</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-channel-link')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Channel Type</label>
+        <select id="channel-type" class="form-select">
+          <option value="monetization">Monetization (Place Mio Ads & Earn Revenue)</option>
+          <option value="promotion">Promotion (Advertise & Grow Your Channel)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Channel Title</label>
+        <input type="text" id="channel-title" class="form-input" placeholder="e.g. Tech Alpha Deals" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Channel Username / Link</label>
+        <input type="text" id="channel-username" class="form-input" placeholder="@YourChannel" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select id="channel-category" class="form-select">
+          <option value="Crypto & Finance">Crypto & Finance</option>
+          <option value="Tech & Deals">Tech & Deals</option>
+          <option value="Gaming & Apps">Gaming & Apps</option>
+          <option value="News & Media">News & Media</option>
+          <option value="Entertainment">Entertainment</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estimated Subscribers</label>
+        <input type="number" id="channel-subs" class="form-input" value="10000" />
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitChannelLink()">Submit for Admin Moderation</button>
+    </div>
+  </div>
+
+  <!-- Modal: New Ad Campaign -->
+  <div id="modal-campaign-create" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Create Ad Campaign</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-campaign-create')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Campaign Headline</label>
+        <input type="text" id="cmp-title" class="form-input" placeholder="e.g. Join VIP Crypto Trading Group" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ad Narrative / Text</label>
+        <textarea id="cmp-narrative" class="form-textarea" placeholder="Compelling description for Telegram audience..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destination URL</label>
+        <input type="text" id="cmp-url" class="form-input" placeholder="https://t.me/yourbot or https://..." />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Billing Model</label>
+          <select id="cmp-model" class="form-select">
+            <option value="CPC">CPC (Cost Per Click)</option>
+            <option value="CPM">CPM (Per 1000 Views)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bid Rate ($ USDT)</label>
+          <input type="number" id="cmp-bid" class="form-input" value="0.02" step="0.01" />
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Budget ($ USDT)</label>
+          <input type="number" id="cmp-budget" class="form-input" value="25.00" min="5" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dwell-Time Timer</label>
+          <select id="cmp-dwell" class="form-select">
+            <option value="60">60 Seconds (1 Min)</option>
+            <option value="90">90 Seconds (1.5 Min)</option>
+            <option value="120">120 Seconds (2 Min)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitCampaignCreate()">🚀 Launch Ad Campaign</button>
+    </div>
+  </div>
+
+  <!-- Modal: Support Ticket Submission (with multi-file attachments & 24h SLA) -->
+  <div id="modal-ticket-create" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Open Support Ticket</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-ticket-create')">×</button>
+      </div>
+      <div class="sla-badge-24h" style="width:100%;margin-bottom:12px;">
+        <span>⏱ <b>Strict 24h SLA Response Guarantee</b></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Gmail Address</label>
+        <input type="email" id="ticket-gmail" class="form-input" placeholder="your.email@gmail.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Issue Narrative</label>
+        <textarea id="ticket-narrative" class="form-textarea" placeholder="Detailed description of your issue or question..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Upload Attachments (Photos, Videos, Docs)</label>
+        <input type="file" id="ticket-files" class="form-input" multiple />
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitTicket()">Submit Ticket & Mirror to Lock Channel</button>
+    </div>
+  </div>
+
+  <!-- Modal: Apply for Affiliate Tier -->
+  <div id="modal-affiliate-apply" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Affiliate Program Application</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-affiliate-apply')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Primary Traffic Source</label>
+        <input type="text" id="aff-source" class="form-input" placeholder="e.g. Telegram Channels, YouTube, Website" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estimated Monthly Volume (Clicks/Views)</label>
+        <input type="text" id="aff-volume" class="form-input" placeholder="e.g. 50,000+ monthly clicks" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Additional Notes</label>
+        <textarea id="aff-notes" class="form-textarea" placeholder="Portfolio links or past performance..."></textarea>
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="Forms.submitAffiliateApplication()">Submit for Admin Approval</button>
+    </div>
+  </div>
+
+  <!-- Modal: Switch Active MongoDB URI -->
+  <div id="modal-switch-db" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Switch Active MongoDB URI</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-switch-db')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Select Dynamic Connection Pool Target</label>
+        <select id="db-switch-index" class="form-select">
+          <option value="0">Primary URI: mongodb://localhost:27017/mioads_db</option>
+          <option value="1">Secondary Atlas: cluster0.mongodb.net/mioads_db</option>
+          <option value="2">Backup Server: mongodb://mongo_backup:27017</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Or Custom MongoDB Connection String</label>
+        <input type="text" id="db-switch-custom" class="form-input" placeholder="mongodb+srv://..." />
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="AdminActions.switchDb()">Apply Connection Switch</button>
+    </div>
+  </div>
+
+  <!-- Modal: Test MongoDB Connection -->
+  <div id="modal-test-db" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem;font-weight:700;">Test MongoDB Connection</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-test-db')">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">MongoDB Connection String</label>
+        <input type="text" id="db-test-uri" class="form-input" value="mongodb://localhost:27017/mioads_db" />
+      </div>
+      <div id="db-test-result" style="font-size:0.85rem;margin:10px 0;"></div>
+      <button class="btn-primary" style="width:100%;" onclick="AdminActions.testDbConnection()">Ping & Verify Latency</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/dwell_timer.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Form Actions Helper Script -->
+  <script>
+    const Forms = {
+      updateDepositMin() {
+        const cur = document.getElementById("deposit-currency").value;
+        const label = document.getElementById("deposit-amount-label");
+        const amountInput = document.getElementById("deposit-amount");
+        if (cur === "INR") {
+          label.innerText = "Deposit Amount (Min ₹500 INR)";
+          amountInput.value = "500";
+        } else {
+          label.innerText = "Deposit Amount (Min $10.00 USDT)";
+          amountInput.value = "10";
+        }
+      },
+
+      async submitDeposit() {
+        const cur = document.getElementById("deposit-currency").value;
+        const amount = parseFloat(document.getElementById("deposit-amount").value);
+        const utr = document.getElementById("deposit-utr").value;
+
+        if (cur === "INR" && amount < 500) {
+          alert("Minimum deposit is ₹500 INR");
+          return;
+        }
+        if (cur === "USDT" && amount < 10) {
+          alert("Minimum deposit is $10 USDT");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/v1/wallet/deposit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: MioApp.state.user.telegram_id,
+              currency: cur,
+              amount: amount,
+              payment_method: cur === "INR" ? "UPI" : "USDT_TRC20",
+              utr_or_txid: utr
+            })
+          });
+          const data = await res.json();
+          MioApp.closeModal("modal-deposit");
+          MioApp.showToast("Deposit registered! PDF Invoice created & mirrored to Lock Channel.");
+          MioApp.fetchUserProfile();
+          MioApp.renderInvoices();
+        } catch (e) {
+          MioApp.showToast("Deposit error: " + e.message);
+        }
+      },
+
+      async submitWithdrawal() {
+        const amount = parseFloat(document.getElementById("withdraw-amount").value);
+        const address = document.getElementById("withdraw-address").value;
+
+        if (amount < 5) {
+          alert("Minimum withdrawal is $5.00 USDT");
+          return;
+        }
+        if (!address) {
+          alert("Please specify a payout destination address.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/v1/wallet/withdraw", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: MioApp.state.user.telegram_id,
+              amount_usdt: amount,
+              payout_address: address,
+              currency: "USDT"
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            MioApp.closeModal("modal-withdraw");
+            MioApp.showToast("Withdrawal submitted for 48-Hour Review SLA.");
+            MioApp.fetchUserProfile();
+          } else {
+            alert(data.detail || "Withdrawal failed");
+          }
+        } catch (e) {
+          MioApp.showToast("Withdrawal error: " + e.message);
+        }
+      },
+
+      async submitChannelLink() {
+        const type = document.getElementById("channel-type").value;
+        const title = document.getElementById("channel-title").value;
+        const username = document.getElementById("channel-username").value;
+        const category = document.getElementById("channel-category").value;
+        const subs = parseInt(document.getElementById("channel-subs").value) || 1000;
+
+        if (!title || !username) {
+          alert("Please fill in channel title and username.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/v1/channels/link", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              telegram_id: MioApp.state.user.telegram_id,
+              title: title,
+              username: username,
+              type: type,
+              category: category,
+              subscribers: subs
+            })
+          });
+          if (res.ok) {
+            MioApp.closeModal("modal-channel-link");
+            MioApp.showToast("Channel submitted for Admin moderation.");
+            MioApp.fetchChannels();
+          }
+        } catch (e) {
+          MioApp.showToast("Channel link error: " + e.message);
+        }
+      },
+
+      async submitCampaignCreate() {
+        const title = document.getElementById("cmp-title").value;
+        const narrative = document.getElementById("cmp-narrative").value;
+        const targetUrl = document.getElementById("cmp-url").value;
+        const model = document.getElementById("cmp-model").value;
+        const bid = parseFloat(document.getElementById("cmp-bid").value);
+        const budget = parseFloat(document.getElementById("cmp-budget").value);
+        const dwell = parseInt(document.getElementById("cmp-dwell").value);
+
+        if (!title || !narrative || !targetUrl) {
+          alert("Please fill in campaign title, narrative, and URL.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/v1/campaigns/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              advertiser_id: MioApp.state.user.telegram_id,
+              title: title,
+              narrative: narrative,
+              target_url: targetUrl,
+              model: model,
+              bid_usdt: bid,
+              budget_usdt: budget,
+              dwell_time_seconds: dwell
+            })
+          });
+          if (res.ok) {
+            MioApp.closeModal("modal-campaign-create");
+            MioApp.showToast("Ad campaign launched successfully!");
+            MioApp.fetchCampaigns();
+            MioApp.fetchUserProfile();
+          }
+        } catch (e) {
+          MioApp.showToast("Campaign launch error.");
+        }
+      },
+
+      async submitTicket() {
+        const gmail = document.getElementById("ticket-gmail").value;
+        const narrative = document.getElementById("ticket-narrative").value;
+        const filesInput = document.getElementById("ticket-files");
+
+        if (!gmail || !narrative) {
+          alert("Please provide Gmail and narrative.");
+          return;
+        }
+
+        // Upload files if selected
+        let uploadedFiles = [];
+        if (filesInput.files.length > 0) {
+          const formData = new FormData();
+          for (let i = 0; i < filesInput.files.length; i++) {
+            formData.append("files", filesInput.files[i]);
+          }
+          try {
+            const upRes = await fetch("/api/v1/support/upload", {
+              method: "POST",
+              body: formData
+            });
+            if (upRes.ok) {
+              const upData = await upRes.json();
+              uploadedFiles = upData.filenames || [];
+            }
+          } catch (e) {
+            console.warn("Upload fallback:", e);
+          }
+        }
+
+        try {
+          const res = await fetch("/api/v1/support/tickets/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: MioApp.state.user.telegram_id,
+              gmail: gmail,
+              narrative: narrative,
+              attachments: uploadedFiles
+            })
+          });
+          if (res.ok) {
+            MioApp.closeModal("modal-ticket-create");
+            MioApp.showToast("Ticket created under 24h SLA & mirrored to Lock Channel!");
+            MioApp.renderTickets();
+          }
+        } catch (e) {
+          MioApp.showToast("Ticket error.");
+        }
+      },
+
+      async submitAffiliateApplication() {
+        const source = document.getElementById("aff-source").value;
+        const volume = document.getElementById("aff-volume").value;
+        const notes = document.getElementById("aff-notes").value;
+
+        try {
+          const res = await fetch("/api/v1/affiliate/apply", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: MioApp.state.user.telegram_id,
+              traffic_source: source,
+              estimated_volume: volume,
+              notes: notes
+            })
+          });
+          if (res.ok) {
+            MioApp.closeModal("modal-affiliate-apply");
+            MioApp.showToast("Affiliate application submitted for Admin approval!");
+          }
+        } catch (e) {
+          MioApp.showToast("Application failed.");
+        }
+      }
+    };
+
+    const AdminActions = {
+      async updateFee() {
+        const fee = parseFloat(document.getElementById("input-admin-fee").value);
+        await this.postConfig({ platform_fee_percent: fee }, `Platform fee updated to ${fee}%`);
+      },
+      async updateRate() {
+        const rate = parseFloat(document.getElementById("input-admin-rate").value);
+        await this.postConfig({ usdt_to_inr_rate: rate }, `Exchange rate updated: $1 = ₹${rate} INR`);
+      },
+      async updateAffiliateRate() {
+        const affRate = parseFloat(document.getElementById("input-admin-affiliate-rate").value);
+        await this.postConfig({ affiliate_click_rate_usdt: affRate }, `Affiliate rate updated to $${affRate}/click`);
+      },
+      async postConfig(payload, successMsg) {
+        payload.admin_id = MioApp.state.user.telegram_id;
+        try {
+          const res = await fetch("/api/v1/admin/settings/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            MioApp.showToast(successMsg);
+            MioApp.fetchSystemSettings();
+            MioApp.fetchUserProfile();
+          }
+        } catch (e) {
+          MioApp.showToast("Failed to update system config.");
+        }
+      },
+      async sendBroadcast() {
+        const title = document.getElementById("broadcast-title").value;
+        const msg = document.getElementById("broadcast-message").value;
+        if (!title || !msg) {
+          alert("Please fill in broadcast title and message.");
+          return;
+        }
+        try {
+          const res = await fetch("/api/v1/admin/broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              admin_id: MioApp.state.user.telegram_id,
+              title: title,
+              message: msg,
+              target: "all"
+            })
+          });
+          if (res.ok) {
+            document.getElementById("broadcast-title").value = "";
+            document.getElementById("broadcast-message").value = "";
+            MioApp.showToast("Global broadcast dispatched across network!");
+            MioApp.renderAdminPanel();
+          }
+        } catch (e) {
+          MioApp.showToast("Broadcast failed.");
+        }
+      },
+      async switchDb() {
+        const idx = parseInt(document.getElementById("db-switch-index").value);
+        const custom = document.getElementById("db-switch-custom").value;
+        try {
+          const res = await fetch("/api/v1/admin/database/switch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              admin_id: MioApp.state.user.telegram_id,
+              uri_index: idx,
+              custom_uri: custom || null
+            })
+          });
+          const data = await res.json();
+          MioApp.closeModal("modal-switch-db");
+          MioApp.showToast("MongoDB pool active connection switched!");
+          MioApp.renderAdminPanel();
+        } catch (e) {
+          MioApp.showToast("DB switch error.");
+        }
+      },
+      async testDbConnection() {
+        const uri = document.getElementById("db-test-uri").value;
+        const resultEl = document.getElementById("db-test-result");
+        resultEl.innerHTML = `<span style="color:var(--accent-cyan);">Pinging MongoDB URI...</span>`;
+        try {
+          const res = await fetch("/api/v1/admin/database/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uri: uri })
+          });
+          const data = await res.json();
+          if (data.success) {
+            resultEl.innerHTML = `<span style="color:#10B981;">✅ ${data.message}</span>`;
+          } else {
+            resultEl.innerHTML = `<span style="color:#EF4444;">❌ ${data.message}</span>`;
+          }
+        } catch (e) {
+          resultEl.innerHTML = `<span style="color:#EF4444;">❌ Ping failed.</span>`;
+        }
+      }
+    };
+  </script>
+</body>
+</html>
