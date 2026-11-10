@@ -93,11 +93,11 @@ body {
   max-width: 80vw;
   max-height: 80vw;
   aspect-ratio: 1 / 1;
-  background-image: url('/static/images/logo.png');
+  background-image: url('/static/images/watermark_light.png');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  opacity: var(--watermark-opacity);
+  opacity: 1;
   pointer-events: none;
   z-index: 0;
   transition: opacity 0.4s ease;
@@ -847,3 +847,16 @@ body {
   color: var(--text-muted);
   cursor: pointer;
 }
+
+/* Dark-theme watermark (image already has built-in transparency) */
+[data-theme="dark"] .dynamic-watermark { background-image: url('/static/images/watermark_dark.png'); }
+
+/* Header alignment fix: name + role badge stacked, controls never wrap */
+.app-header { justify-content: space-between; gap: 10px; }
+.brand-section { min-width: 0; flex: 1; }
+.brand-section > div { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; min-width: 0; }
+.brand-title { white-space: nowrap; line-height: 1.15; }
+.brand-tag, #user-role-badge { margin: 3px 0 0 0 !important; display: inline-block; white-space: nowrap; line-height: 1.2; }
+.header-controls { flex-shrink: 0; justify-content: flex-end; }
+.theme-toggle-btn { white-space: nowrap; }
+.brand-logo-small { flex-shrink: 0; }
