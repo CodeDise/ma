@@ -101,7 +101,7 @@ class InvoiceGenerator:
         company_info = Paragraph(
             "<b>Mio Ads Ecosystem</b><br/>"
             "Telegram Mini App Ads Network<br/>"
-            "Official Telegram: @MioAdsOfficialBot<br/>"
+            "Bot: @mioadsbot | Channel: @mioads<br/>"
             "Lock Channel: Administrative Mirror",
             body_style
         )
@@ -130,6 +130,10 @@ class InvoiceGenerator:
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ]))
+        banner_path = os.path.join(config.STATIC_DIR, "images", "invoice_header.png")
+        if os.path.exists(banner_path):
+            elements.append(RLImage(banner_path, width=540, height=135))   # 1600x400 banner
+            elements.append(Spacer(1, 10))
         elements.append(header_table)
         elements.append(Spacer(1, 15))
 
@@ -157,7 +161,7 @@ class InvoiceGenerator:
                 Paragraph(f"<b>{tx_data.get('description', 'Mio Ads Account Transaction')}</b><br/><font color='#64748B'>TX Reference: {tx_data.get('tx_id', invoice_id)}</font>", body_style),
                 Paragraph(f"{tx_type}<br/>{tx_data.get('sla_note', 'Direct Settle')}", body_style),
                 Paragraph(f"${amount:.2f} USDT", body_style),
-                Paragraph(f"₹{amount_inr:,.2f} INR", body_style),
+                Paragraph(f"Rs. {amount_inr:,.2f} INR", body_style),
                 Paragraph(f"<b>${net_amount:.2f} USDT</b>", body_style)
             ]
         ]
@@ -167,7 +171,7 @@ class InvoiceGenerator:
                 Paragraph(f"Platform Fee Deduction ({fee_percent}%)", body_style),
                 Paragraph("Administrative Fee", body_style),
                 Paragraph(f"-${fee_amount:.2f} USDT", body_style),
-                Paragraph(f"-₹{fee_amount * inr_rate:,.2f} INR", body_style),
+                Paragraph(f"-Rs. {fee_amount * inr_rate:,.2f} INR", body_style),
                 Paragraph(f"-${fee_amount:.2f} USDT", body_style)
             ])
 
@@ -176,7 +180,7 @@ class InvoiceGenerator:
             Paragraph("<b>TOTAL SETTLED AMOUNT</b>", body_style),
             Paragraph("<b>48h Lock Verifiable</b>", body_style),
             Paragraph(f"<b>${net_amount:.2f} USDT</b>", body_style),
-            Paragraph(f"<b>₹{net_inr:,.2f} INR</b>", body_style),
+            Paragraph(f"<b>Rs. {net_inr:,.2f} INR</b>", body_style),
             Paragraph(f"<font color='#059669'><b>${net_amount:.2f} USDT</b></font>", body_style)
         ])
 
@@ -193,6 +197,12 @@ class InvoiceGenerator:
         ]))
         elements.append(items_table)
         elements.append(Spacer(1, 20))
+        stamp_path = os.path.join(config.STATIC_DIR, "images", "invoice_paid.png")
+        if os.path.exists(stamp_path) and status in ("COMPLETED", "PAID", "APPROVED"):
+            stamp = RLImage(stamp_path, width=110, height=110)
+            stamp.hAlign = "RIGHT"
+            elements.append(stamp)
+            elements.append(Spacer(1, 10))
 
         # Lock Ledger Encapsulated Metadata
         lock_meta_text = (

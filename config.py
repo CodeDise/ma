@@ -17,7 +17,10 @@ class Config:
 
     # Telegram Bot & Mini App
     TELEGRAM_BOT_TOKEN: str = "8056294132:AAHfR3E9wExample_MioAdsTokenSecretKey"
-    TELEGRAM_BOT_USERNAME: str = "MioAdsOfficialBot"
+    TELEGRAM_BOT_NAME: str = "mioads bot"
+    TELEGRAM_BOT_USERNAME: str = "mioadsbot"
+    TELEGRAM_CHANNEL_NAME: str = "Mioads"
+    TELEGRAM_CHANNEL_USERNAME: str = "@mioads"
     MINI_APP_SHORT_NAME: str = "app"
 
     # Administrative 'Lock Channel' (Private channel for security mirrors, logs, SLA alerts, invoices)
@@ -26,12 +29,9 @@ class Config:
 
     # MongoDB Dynamic Configuration
     # Supports primary connection string and additional fallback/secondary URIs
-    MONGODB_PRIMARY_URI: str = "mongodb://localhost:27017/mioads_db"
-    MONGODB_SECONDARY_URIS: List[str] = [
-        "mongodb+srv://mioads_cluster0:secret@cluster0.mongodb.net/mioads_db?retryWrites=true&w=majority",
-        "mongodb://mongo_backup:27017/mioads_backup"
-    ]
-    ACTIVE_DB_INDEX: int = 0
+    # Default URL (used the first time). Admin can add/remove more URLs from the Admin Panel.
+    MONGODB_PRIMARY_URI: str = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/mioads_db")
+    DB_URLS_FILE: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "db_urls.json")
     DB_NAME: str = "mioads_db"
 
     # Platform Financial & Operational Thresholds
@@ -51,12 +51,13 @@ class Config:
     DWELL_TIME_MAX_SECONDS: int = 120          # Dwell time timer maximum (2 minutes)
     DEFAULT_DWELL_TIME_SECONDS: int = 60       # Configurable dwell-time required before impression counts
 
-    # Default Admins (Telegram IDs)
-    ADMIN_TELEGRAM_IDS: List[int] = [
-        123456789,
-        987654321,
-        777000
-    ]
+    # Admin access
+    # Optional pre-approved admin Telegram IDs (leave empty: first admin is created by token login)
+    ADMIN_TELEGRAM_IDS: List[int] = []
+    # Admin login token. SET THIS (or env ADMIN_TOKEN) before deploying.
+    ADMIN_TOKEN_PLACEHOLDER: str = "CHANGE_THIS_ADMIN_TOKEN"
+    ADMIN_TOKEN: str = os.environ.get("ADMIN_TOKEN", "CHANGE_THIS_ADMIN_TOKEN")
+    ADMIN_SESSION_HOURS: int = 12
 
     # Localization Defaults
     DEFAULT_LANGUAGE: str = "en"

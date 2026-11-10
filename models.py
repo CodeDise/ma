@@ -132,3 +132,17 @@ class AdImpressionTrackRequest(BaseModel):
     clicked_directly: bool = False
     visitor_ip: Optional[str] = None
     user_agent: Optional[str] = None
+
+
+class AdminLoginRequest(BaseModel):
+    telegram_id: int
+    token: str
+
+class AdminManageRequest(BaseModel):
+    telegram_id: int
+
+class DatabaseAddRequest(BaseModel):
+    uri: str
+
+class DatabaseRemoveRequest(BaseModel):
+    db_id: str

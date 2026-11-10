@@ -12,81 +12,132 @@ import mongomock
 
 from config import config
 
+import os, json, hashlib, re
+
+def _uri_id(uri: str) -> str:
+    return hashlib.sha1(uri.encode()).hexdigest()[:10]
+
+def _mask(uri: str) -> str:
+    return re.sub(r'(://[^:/@]+:)[^@]+@', r'\1***@', uri)
+
 class DatabaseManager:
+    """MongoDB manager: admin can add/remove many URLs; the first reachable URL is active."""
     def __init__(self):
-        self.active_uri_index = config.ACTIVE_DB_INDEX
-        self.available_uris = [config.MONGODB_PRIMARY_URI] + list(config.MONGODB_SECONDARY_URIS)
+        self.urls: List[str] = self._load_urls()
+        self.active_uri: Optional[str] = None
         self.client = None
         self.db = None
         self.is_mock = False
-        self._initialize_connection()
+        self._connect()
 
-    def _initialize_connection(self):
-        """Attempts to connect to the active MongoDB URI; falls back to mongomock if unavailable."""
-        uri = self.available_uris[self.active_uri_index]
+    # ---- persistence ----
+    def _load_urls(self) -> List[str]:
         try:
-            client = MongoClient(uri, serverSelectionTimeoutMS=2000)
-            # Trigger server connection test
-            client.admin.command('ping')
-            self.client = client
-            self.db = self.client[config.DB_NAME]
-            self.is_mock = False
-            print(f"[Database] Successfully connected to live MongoDB URI [{self.active_uri_index}]: {uri}")
-        except Exception as e:
-            print(f"[Database Warning] Unable to connect to live MongoDB at {uri} ({e}). Initializing high-fidelity MongoMock DB.")
-            self.client = mongomock.MongoClient()
-            self.db = self.client[config.DB_NAME]
-            self.is_mock = True
+            with open(config.DB_URLS_FILE) as f:
+                urls = [u for u in json.load(f) if isinstance(u, str) and u]
+                if urls:
+                    return urls
+        except Exception:
+            pass
+        return [config.MONGODB_PRIMARY_URI]
 
+    def _save_urls(self):
+        try:
+            os.makedirs(os.path.dirname(config.DB_URLS_FILE), exist_ok=True)
+            with open(config.DB_URLS_FILE, "w") as f:
+                json.dump(self.urls, f)
+        except Exception as e:
+            print(f"[Database Warning] Could not save URL list file: {e}")
+        # Mirror in the live DB too, so the list survives restarts on hosts with temporary disk
+        try:
+            if not self.is_mock and self.db is not None:
+                self.db.system_settings.update_one({"_id": "db_urls"}, {"$set": {"urls": self.urls}}, upsert=True)
+        except Exception:
+            pass
+
+    def _merge_urls_from_db(self):
+        try:
+            doc = self.db.system_settings.find_one({"_id": "db_urls"})
+            if doc:
+                for u in doc.get("urls", []):
+                    if u not in self.urls:
+                        self.urls.append(u)
+        except Exception:
+            pass
+
+    # ---- connection ----
+    def _connect(self):
+        """Connects to the first reachable URL in the list; MongoMock only if none work."""
+        for uri in self.urls:
+            try:
+                client = MongoClient(uri, serverSelectionTimeoutMS=2500)
+                client.admin.command('ping')
+                self.client, self.active_uri, self.is_mock = client, uri, False
+                self.db = client[config.DB_NAME]
+                print(f"[Database] Connected to live MongoDB: {_mask(uri)}")
+                self._merge_urls_from_db()
+                self._seed_initial_data()
+                return
+            except Exception as e:
+                print(f"[Database Warning] Cannot connect to {_mask(uri)} ({e})")
+        print("[Database Warning] No live MongoDB reachable. Using temporary MongoMock DB.")
+        self.client = mongomock.MongoClient()
+        self.db = self.client[config.DB_NAME]
+        self.active_uri, self.is_mock = None, True
         self._seed_initial_data()
 
     def test_connection(self, uri: str) -> Dict[str, Any]:
-        """Tests a prospective MongoDB connection URL."""
         try:
             t0 = time.time()
-            test_client = MongoClient(uri, serverSelectionTimeoutMS=3000)
-            test_client.admin.command('ping')
-            latency_ms = round((time.time() - t0) * 1000, 2)
-            return {
-                "success": True,
-                "message": f"Successfully connected to MongoDB ({latency_ms}ms latency)",
-                "latency_ms": latency_ms
-            }
+            c = MongoClient(uri, serverSelectionTimeoutMS=3000)
+            c.admin.command('ping')
+            ms = round((time.time() - t0) * 1000, 1)
+            c.close()
+            return {"success": True, "message": f"Connected ({ms} ms)", "latency_ms": ms}
         except Exception as e:
-            return {
-                "success": False,
-                "message": f"Connection failed: {str(e)}",
-                "latency_ms": None
-            }
+            return {"success": False, "message": f"Connection failed: {str(e)[:120]}", "latency_ms": None}
 
-    def switch_database_uri(self, uri_index: int, custom_uri: Optional[str] = None) -> Dict[str, Any]:
-        """Switches active database connection to another URL configured via Admin Panel."""
-        if custom_uri:
-            if custom_uri not in self.available_uris:
-                self.available_uris.append(custom_uri)
-            self.active_uri_index = self.available_uris.index(custom_uri)
-        elif 0 <= uri_index < len(self.available_uris):
-            self.active_uri_index = uri_index
-        else:
-            return {"success": False, "message": "Invalid URI index"}
+    def add_url(self, uri: str) -> Dict[str, Any]:
+        uri = (uri or "").strip()
+        if not re.match(r'^mongodb(\+srv)?://', uri):
+            return {"success": False, "message": "URL must start with mongodb:// or mongodb+srv://"}
+        if uri in self.urls:
+            return {"success": False, "message": "This URL is already added"}
+        res = self.test_connection(uri)
+        if not res["success"]:
+            return {"success": False, "message": res["message"]}
+        self.urls.append(uri)
+        if self.is_mock:           # first working URL replaces the temporary mock DB
+            self._connect()
+        self._save_urls()
+        return {"success": True, "message": "MongoDB URL added", "latency_ms": res["latency_ms"]}
 
-        self._initialize_connection()
-        return {
-            "success": True,
-            "active_index": self.active_uri_index,
-            "active_uri": self.available_uris[self.active_uri_index],
-            "is_mock": self.is_mock
-        }
+    def remove_url(self, db_id: str) -> Dict[str, Any]:
+        target = next((u for u in self.urls if _uri_id(u) == db_id), None)
+        if not target:
+            return {"success": False, "message": "URL not found"}
+        if len(self.urls) <= 1:
+            return {"success": False, "message": "Cannot remove the last MongoDB URL"}
+        self.urls.remove(target)
+        if target == self.active_uri:
+            self._connect()        # fail over to the next reachable URL
+        self._save_urls()
+        return {"success": True, "message": "MongoDB URL removed"}
 
     def get_database_status(self) -> Dict[str, Any]:
-        """Returns list of all dynamic DB URLs and active status for Admin Panel."""
-        return {
-            "active_index": self.active_uri_index,
-            "active_uri": self.available_uris[self.active_uri_index],
-            "is_mock": self.is_mock,
-            "available_uris": self.available_uris,
-            "db_name": config.DB_NAME
-        }
+        items = []
+        for uri in self.urls:
+            if uri == self.active_uri:
+                ok, ms = True, None
+                try:
+                    t0 = time.time(); self.client.admin.command('ping'); ms = round((time.time() - t0) * 1000, 1)
+                except Exception:
+                    ok = False
+            else:
+                r = self.test_connection(uri); ok, ms = r["success"], r["latency_ms"]
+            items.append({"db_id": _uri_id(uri), "uri": _mask(uri), "connected": ok,
+                          "latency_ms": ms, "active": uri == self.active_uri})
+        return {"is_mock": self.is_mock, "db_name": config.DB_NAME, "urls": items}
 
     def _seed_initial_data(self):
         """Pre-populates sample verified channels, active campaigns, and admin defaults if empty."""
@@ -99,7 +150,6 @@ class DatabaseManager:
                 "affiliate_click_rate_usdt": config.AFFILIATE_CLICK_RATE_USDT,
                 "default_dwell_time_seconds": config.DEFAULT_DWELL_TIME_SECONDS,
                 "lock_channel_id": config.LOCK_CHANNEL_ID,
-                "available_mongo_uris": self.available_uris,
                 "updated_at": time.time()
             })
 
@@ -196,7 +246,7 @@ class DatabaseManager:
                 "title": "Join Top Trading Masterclass 2026",
                 "narrative": "Exclusive Telegram VIP Trading Group. High accuracy signals, educational webinars, and weekly portfolio reviews.",
                 "banner_url": "/static/images/logo.png",
-                "target_url": "https://t.me/MioAdsOfficialBot?start=promo_masterclass",
+                "target_url": "https://t.me/mioadsbot?start=promo_masterclass",
                 "model": "CPC",
                 "bid_usdt": 0.03,
                 "budget_usdt": 150.00,
@@ -213,7 +263,7 @@ class DatabaseManager:
                 "title": "Next-Gen Web3 Gaming Bot",
                 "narrative": "Play, farm tokens, and earn TON rewards directly inside Telegram Mini App. Over 1M daily active players!",
                 "banner_url": "/static/images/logo.png",
-                "target_url": "https://t.me/MioAdsOfficialBot?start=promo_game",
+                "target_url": "https://t.me/mioadsbot?start=promo_game",
                 "model": "CPM",
                 "bid_usdt": 2.50,
                 "budget_usdt": 300.00,

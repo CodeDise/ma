@@ -33,7 +33,7 @@ cmp = client.post("/api/v1/campaigns/create", json={
     "advertiser_id": 100200300,
     "title": "Crypto Whales VIP Signal Group",
     "narrative": "Join 100K+ daily traders for verified spot and futures signals.",
-    "target_url": "https://t.me/MioAdsOfficialBot?start=crypto_whales",
+    "target_url": "https://t.me/mioadsbot?start=crypto_whales",
     "model": "CPC",
     "bid_usdt": 0.04,
     "budget_usdt": 10.0,

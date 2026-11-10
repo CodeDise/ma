@@ -120,7 +120,8 @@ class TelegramBotManager:
             reply_markup = self.build_webapp_inline_keyboard("💳 Open Wallet in Mini App")
 
         elif text.startswith("/admin"):
-            if telegram_id not in config.ADMIN_TELEGRAM_IDS:
+            _u = db_manager.db.users.find_one({"telegram_id": telegram_id})
+            if not _u or _u.get("role") != "admin":
                 response_text = "⛔ <i>Access Denied: Administrative privileges required.</i>"
             else:
                 response_text = (
