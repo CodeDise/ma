@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mio Ads | Telegram Mini App Ecosystem</title>
+  <link rel="icon" type="image/png" href="/static/images/favicon_64.png" />
+  <link rel="apple-touch-icon" href="/static/images/favicon_192.png" />
+  <meta property="og:image" content="/static/images/og_share_preview.png" />
   <!-- Telegram WebApp Script -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Google Fonts: Inter -->
@@ -20,7 +23,7 @@
 
   <!-- Mandatory Opening View / Splash Screen -->
   <div id="opening-view">
-    <img src="/static/images/logo.png" alt="Mio Ads MA Logo" class="splash-logo" />
+    <img src="/static/images/logo_cyan.png" alt="Mio Ads MA Logo" class="splash-logo" />
     <h1 class="splash-title">MIO ADS</h1>
     <p class="splash-subtitle">Decentralized Telegram Ads & Monetization Ecosystem with Administrative Lock Ledger</p>
     <button class="splash-btn" onclick="MioApp.dismissOpeningView()">Enter Ecosystem 🚀</button>
@@ -45,11 +48,6 @@
         <button class="theme-toggle-btn" onclick="MioApp.toggleTheme()">
           <span id="theme-toggle-text">🌙 Dark</span>
         </button>
-        <!-- Demo Persona Switcher for Quick Evaluation -->
-        <select id="demo-role-switcher" style="background:rgba(255,255,255,0.1);color:#FFF;border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:4px 6px;font-size:0.75rem;">
-          <option value="user" style="color:#000;">User Mode</option>
-          <option value="admin" style="color:#000;">Admin Mode</option>
-        </select>
       </div>
     </header>
 
@@ -224,13 +222,25 @@
           <span class="brand-tag">SHIELD ACTIVE</span>
         </div>
 
-        <!-- Dynamic MongoDB Pool Control -->
+        <!-- MongoDB URL Manager -->
         <div class="campaign-card">
-          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:8px;">Dynamic MongoDB Connection Pool</h4>
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:8px;">MongoDB Databases</h4>
           <div id="admin-db-status-container" style="margin-bottom:12px;"></div>
+          <input type="text" id="db-add-uri" class="form-input" placeholder="mongodb+srv://user:pass@cluster/db" />
+          <div id="db-add-result" style="font-size:0.8rem;margin:8px 0;"></div>
           <div style="display:flex;gap:8px;">
-            <button class="btn-primary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="MioApp.openModal('modal-switch-db')">Switch Database URI</button>
-            <button class="btn-secondary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="MioApp.openModal('modal-test-db')">Test Mongo URI</button>
+            <button class="btn-secondary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="AdminActions.testDbConnection()">Test</button>
+            <button class="btn-primary" style="flex:1;padding:8px;font-size:0.8rem;" onclick="AdminActions.addDb()">+ Add URL</button>
+          </div>
+        </div>
+
+        <!-- Admin Management -->
+        <div class="campaign-card">
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:8px;">Admins</h4>
+          <div id="admin-admins-list" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="admin-add-id" class="form-input" placeholder="User Telegram ID" />
+            <button class="btn-primary" style="padding:0 14px;white-space:nowrap;" onclick="AdminActions.addAdmin()">Make Admin</button>
           </div>
         </div>
 
@@ -561,42 +571,23 @@
     </div>
   </div>
 
-  <!-- Modal: Switch Active MongoDB URI -->
-  <div id="modal-switch-db" class="modal-overlay">
+  <!-- Modal: Admin Login -->
+  <div id="modal-admin-login" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 style="font-size:1.1rem;font-weight:700;">Switch Active MongoDB URI</h3>
-        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-switch-db')">×</button>
+        <h3 style="font-size:1.1rem;font-weight:700;">Admin Login</h3>
+        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-admin-login')">×</button>
       </div>
       <div class="form-group">
-        <label class="form-label">Select Dynamic Connection Pool Target</label>
-        <select id="db-switch-index" class="form-select">
-          <option value="0">Primary URI: mongodb://localhost:27017/mioads_db</option>
-          <option value="1">Secondary Atlas: cluster0.mongodb.net/mioads_db</option>
-          <option value="2">Backup Server: mongodb://mongo_backup:27017</option>
-        </select>
+        <label class="form-label">Your Telegram ID</label>
+        <input type="number" id="admin-login-id" class="form-input" />
       </div>
       <div class="form-group">
-        <label class="form-label">Or Custom MongoDB Connection String</label>
-        <input type="text" id="db-switch-custom" class="form-input" placeholder="mongodb+srv://..." />
+        <label class="form-label">Admin Token</label>
+        <input type="password" id="admin-login-token" class="form-input" autocomplete="off" />
       </div>
-      <button class="btn-primary" style="width:100%;" onclick="AdminActions.switchDb()">Apply Connection Switch</button>
-    </div>
-  </div>
-
-  <!-- Modal: Test MongoDB Connection -->
-  <div id="modal-test-db" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 style="font-size:1.1rem;font-weight:700;">Test MongoDB Connection</h3>
-        <button class="modal-close-btn" onclick="MioApp.closeModal('modal-test-db')">×</button>
-      </div>
-      <div class="form-group">
-        <label class="form-label">MongoDB Connection String</label>
-        <input type="text" id="db-test-uri" class="form-input" value="mongodb://localhost:27017/mioads_db" />
-      </div>
-      <div id="db-test-result" style="font-size:0.85rem;margin:10px 0;"></div>
-      <button class="btn-primary" style="width:100%;" onclick="AdminActions.testDbConnection()">Ping & Verify Latency</button>
+      <div id="admin-login-error" style="font-size:0.8rem;color:#EF4444;margin-bottom:8px;"></div>
+      <button class="btn-primary" style="width:100%;" onclick="MioApp.submitAdminLogin()">Login</button>
     </div>
   </div>
 
@@ -863,7 +854,7 @@
       async postConfig(payload, successMsg) {
         payload.admin_id = MioApp.state.user.telegram_id;
         try {
-          const res = await fetch("/api/v1/admin/settings/update", {
+          const res = await MioApp.adminFetch("/api/v1/admin/settings/update", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -885,7 +876,7 @@
           return;
         }
         try {
-          const res = await fetch("/api/v1/admin/broadcast", {
+          const res = await MioApp.adminFetch("/api/v1/admin/broadcast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -905,46 +896,56 @@
           MioApp.showToast("Broadcast failed.");
         }
       },
-      async switchDb() {
-        const idx = parseInt(document.getElementById("db-switch-index").value);
-        const custom = document.getElementById("db-switch-custom").value;
-        try {
-          const res = await fetch("/api/v1/admin/database/switch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              admin_id: MioApp.state.user.telegram_id,
-              uri_index: idx,
-              custom_uri: custom || null
-            })
-          });
-          const data = await res.json();
-          MioApp.closeModal("modal-switch-db");
-          MioApp.showToast("MongoDB pool active connection switched!");
-          MioApp.renderAdminPanel();
-        } catch (e) {
-          MioApp.showToast("DB switch error.");
-        }
-      },
       async testDbConnection() {
-        const uri = document.getElementById("db-test-uri").value;
-        const resultEl = document.getElementById("db-test-result");
-        resultEl.innerHTML = `<span style="color:var(--accent-cyan);">Pinging MongoDB URI...</span>`;
+        const uri = document.getElementById("db-add-uri").value.trim();
+        const el = document.getElementById("db-add-result");
+        if (!uri) { el.innerHTML = ""; return; }
+        el.innerHTML = `<span style="color:var(--accent-cyan);">Testing...</span>`;
         try {
-          const res = await fetch("/api/v1/admin/database/test", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uri: uri })
+          const res = await MioApp.adminFetch("/api/v1/admin/database/test", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uri })
           });
           const data = await res.json();
-          if (data.success) {
-            resultEl.innerHTML = `<span style="color:#10B981;">✅ ${data.message}</span>`;
-          } else {
-            resultEl.innerHTML = `<span style="color:#EF4444;">❌ ${data.message}</span>`;
-          }
-        } catch (e) {
-          resultEl.innerHTML = `<span style="color:#EF4444;">❌ Ping failed.</span>`;
-        }
+          el.innerHTML = data.success ? `<span style="color:#10B981;">✅ ${data.message}</span>` : `<span style="color:#EF4444;">❌ ${data.message}</span>`;
+        } catch (e) { el.innerHTML = `<span style="color:#EF4444;">❌ Test failed.</span>`; }
+      },
+      async addDb() {
+        const input = document.getElementById("db-add-uri");
+        const el = document.getElementById("db-add-result");
+        try {
+          const res = await MioApp.adminFetch("/api/v1/admin/database/add", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uri: input.value.trim() })
+          });
+          const data = await res.json();
+          if (data.success) { input.value = ""; el.innerHTML = ""; MioApp.showToast("MongoDB URL added"); MioApp.renderAdminPanel(); }
+          else el.innerHTML = `<span style="color:#EF4444;">❌ ${data.message}</span>`;
+        } catch (e) { el.innerHTML = `<span style="color:#EF4444;">❌ Failed.</span>`; }
+      },
+      async removeDb(dbId) {
+        if (!confirm("Remove this MongoDB URL?")) return;
+        const res = await MioApp.adminFetch("/api/v1/admin/database/remove", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ db_id: dbId })
+        });
+        const data = await res.json();
+        MioApp.showToast(data.message || "Done");
+        MioApp.renderAdminPanel();
+      },
+      async addAdmin() {
+        const id = parseInt(document.getElementById("admin-add-id").value);
+        if (!id) return MioApp.showToast("Enter a Telegram ID");
+        const res = await MioApp.adminFetch("/api/v1/admin/admins/add", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegram_id: id })
+        });
+        if (res.ok) { document.getElementById("admin-add-id").value = ""; MioApp.showToast("Admin added"); MioApp.renderAdminList(); }
+        else { const d = await res.json(); MioApp.showToast(d.detail || "Failed"); }
+      },
+      async removeAdmin(id) {
+        if (!confirm("Remove admin " + id + "?")) return;
+        const res = await MioApp.adminFetch("/api/v1/admin/admins/remove", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telegram_id: id })
+        });
+        if (res.ok) { MioApp.showToast("Admin removed"); MioApp.renderAdminList(); }
+        else { const d = await res.json(); MioApp.showToast(d.detail || "Failed"); }
       }
     };
   </script>
